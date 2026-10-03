@@ -1,0 +1,378 @@
+HTML
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>সার ব্যবস্থাপনা অ্যাপ (Google Sheets API)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="max-w-7xl mx-auto p-4 md:p-6">
+        <!-- Header -->
+        <header class="bg-emerald-700 text-white p-4 rounded-xl shadow-md mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold">কৃষি সার ব্যবস্থাপনা ও মনিটরিং অ্যাপ</h1>
+                <p class="text-sm text-emerald-100">গুগল শিট ব্যাকএন্ড সহ লাইভ মনিটরিং</p>
+            </div>
+            <div id="authSection">
+              <button onclick="openLoginModal()" class="bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 rounded-lg text-sm font-semibold border border-emerald-600 transition">
+                  অ্যাডমিন লগইন
+              </button>
+           </div>
+        </header>
+
+        <!-- Input Form Section -->
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8 border border-slate-200">
+            <h2 class="text-lg font-bold text-emerald-800 mb-4 border-b pb-2">নতুন তথ্য এন্ট্রি ফর্ম</h2>
+            
+            <form id="fertilizerForm" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                   <div>
+                      <label class="block text-sm font-semibold mb-1">তারিখ:</label>
+                      <input type="date" id="entryDate" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 outline-none">
+                   </div>
+
+                   <div>
+                      <label class="block text-sm font-semibold mb-1">ইউনিয়নের নাম:</label>
+                      <select id="unionName" required onchange="updateDealers()" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 outline-none">
+                          <option value="">-- ইউনিয়ন নির্বাচন করুন --</option>
+                          <option value="ভাংবাড়ীয়া ১">ভাংবাড়ীয়া ১</option>
+                          <option value="হারদী ২">হারদী ২</option>
+                          <option value="কুমারী ৩">কুমারী ৩</option>
+                          <option value="বাড়াদী ৪">বাড়াদী ৪</option>
+                          <option value="গাংনী ৫">গাংনী ৫</option>
+                          <option value="খাদিমপুর ৬">খাদিমপুর ৬</option>
+                          <option value="জেহালা ৭">জেহালা ৭</option>
+                          <option value="বেলগাছি ৮">বেলগাছি ৮</option>
+                          <option value="ডাউকি ৯">ডাউকি ৯</option>
+                          <option value="জামজামি ১০">জামজামি ১০</option>
+                          <option value="নাগদাহ ১১">নাগদাহ ১১</option>
+                          <option value="খাসকররা ১২">খাসকররা ১২</option>
+                          <option value="কালিদাসপুর ১৩">কালিদাসপুর ১৩</option>
+                          <option value="চিৎলা ১৪">চিৎলা ১৪</option>
+                          <option value="আইলহাস ১৫">আইলহাস ১৫</option>
+                          <option value="পৌরসভা ১৬">পৌরসভা ১৬</option>
+                      </select>
+                   </div>
+
+                   <div>
+                      <label class="block text-sm font-semibold mb-1">ডিলারের নাম:</label>
+                      <select id="dealerName" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 outline-none">
+                          <option value="">-- আগে ইউনিয়ন নির্বাচন করুন --</option>
+                      </select>
+                   </div>
+                </div>
+
+                <!-- সার টেবিল -->
+                <div class="overflow-x-auto mt-4">
+                  <table class="w-full border-collapse border border-slate-300 text-center text-xs md:text-sm">
+                      <thead>
+                          <tr class="bg-emerald-100 text-emerald-900">
+                              <th class="border p-2">সারের নাম</th>
+                              <th class="border p-2">পূর্বের মজুদ (Opening)</th>
+                              <th class="border p-2">চলতি উত্তোলন</th>
+                              <th class="border p-2 bg-emerald-200">মোট বিতরণযোগ্য</th>
+                              <th class="border p-2">বর্তমান বিক্রয়</th>
+                              <th class="border p-2 bg-emerald-200">সমাপ্তি মজুদ (Closing)</th>
+                          </tr>
+                      </thead>
+                      <tbody id="fertilizerTableBody"></tbody>
+                  </table>
+               </div>
+
+               <div class="text-right mt-4">
+                   <button type="submit" id="submitBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2 rounded-lg shadow transition">
+                       সাবমিট করুন
+                   </button>
+               </div>
+            </form>
+        </div>
+
+        <!-- Report Section (Admin Only) -->
+        <div id="reportSection" class="bg-white p-6 rounded-xl shadow-md border border-slate-200 hidden">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-4 border-b pb-2 gap-2">
+                <h2 class="text-lg font-bold text-emerald-800">সকল ডিলারের সম্মিলিত স্টক রিপোর্ট (গুগল শিট ডাটা)</h2>
+              <button onclick="loadReport()" class="text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded hover:bg-emerald-200">রিপোর্ট রিফ্রেশ করুন</button>
+           </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full border-collapse border border-slate-300 text-xs text-center">
+                  <thead>
+                      <tr class="bg-slate-100 text-slate-800">
+                          <th class="border p-2" rowspan="2">তারিখ</th>
+                          <th class="border p-2" rowspan="2">ইউনিয়ন</th>
+                          <th class="border p-2" rowspan="2">ডিলার</th>
+                          <th class="border p-2 bg-blue-50" colspan="4">ইউরিয়া</th>
+                          <th class="border p-2 bg-green-50" colspan="4">টিএসপি</th>
+                          <th class="border p-2 bg-yellow-50" colspan="4">এমওপি</th>
+                          <th class="border p-2 bg-purple-50" colspan="4">ডিএপি</th>
+                      </tr>
+                      <tr class="bg-slate-50 text-[11px]">
+                          <th class="border p-1">পূর্ব</th><th class="border p-1">উত্তোলন</th><th class="border p-1">বিক্রি</th><th class="border p-1 font-bold">মজুদ</th>
+                          <th class="border p-1">পূর্ব</th><th class="border p-1">উত্তোলন</th><th class="border p-1">বিক্রি</th><th class="border p-1 font-bold">মজুদ</th>
+                          <th class="border p-1">পূর্ব</th><th class="border p-1">উত্তোলন</th><th class="border p-1">বিক্রি</th><th class="border p-1 font-bold">মজুদ</th>
+                          <th class="border p-1">পূর্ব</th><th class="border p-1">উত্তোলন</th><th class="border p-1">বিক্রি</th><th class="border p-1 font-bold">মজুদ</th>
+                      </tr>
+                  </thead>
+                  <tbody id="reportTableBody">
+                      <tr><td colspan="19" class="p-4 text-slate-500">ডেটা লোড হচ্ছে...</td></tr>
+                  </tbody>
+                  <tfoot id="reportTableFooter"></tfoot>
+              </table>
+           </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center hidden z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-96 border border-slate-200">
+            <h3 class="text-lg font-bold text-emerald-800 mb-4 border-b pb-2">অ্যাডমিন লগইন</h3>
+            <div class="space-y-3">
+              <div>
+                  <label class="block text-sm font-semibold mb-1">ইউজারনেম:</label>
+                  <input type="text" id="adminUser" class="w-full border rounded-lg p-2 outline-none" placeholder="arif">
+              </div>
+              <div>
+                  <label class="block text-sm font-semibold mb-1">পাসওয়ার্ড:</label>
+                  <input type="password" id="adminPass" class="w-full border rounded-lg p-2 outline-none" placeholder="008899">
+              </div>
+                <div class="flex justify-end gap-2 mt-4">
+                  <button onclick="closeLoginModal()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-lg text-sm font-semibold">বাতিল</button>
+                  <button onclick="handleLogin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">লগইন</button>
+              </div>
+           </div>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = " https://script.google.com/macros/s/AKfycbxROfV18pIrPHIcYSzgvZPyVLEu4hV8-ODhXaoqQpts7mYyE-oZA_89_0akCtYiDcjMiA/exec";
+
+        const dealersByUnion = {
+            "ভাংবাড়ীয়া ১": ["ভাংবাড়ীয়া", "হাটবোয়ালিয়া", "ভোগাইল"],
+            "হারদী ২": ["হারদী", "কেশবপুর", "শেখপাড়া"],
+            "কুমারী ৩": ["কুমারী", "শ্যামপুর", "কামালপুর"],
+            "বাড়াদী ৪": ["বাড়াদী", "পোলতাডাঙ্গা", "নতিডাঙ্গা"],
+            "গাংনী ৫": ["গাংনী", "মোচাইনগর", "ফুলবগাদী"],
+            "খাদিমপুর ৬": ["খাদিমপুর", "বটিয়াপাড়া", "রংপুর"],
+            "জেহালা ৭": ["জেহালা", "গড়গড়ি", "পুটিমারী"],
+            "বেলগাছি ৮": ["ফরিদপুর", "ডামোশ", "বেলগাছি"],
+            "ডাউকি ৯": ["বকসীপুর", "মাজু", "বিনোদপুর"],
+            "জামজামি ১০": ["জামজামি", "পাচলিয়া", "মধুপুর"],
+            "নাগদাহ ১১": ["নাগদাহ", "খেজুরতলা", "জাহাপুর"],
+            "খাসকররা ১২": ["খাসকররা", "রামদিয়া", "পারলক্ষীপুর"],
+            "কালিদাসপুর ১৩": ["কালিদাসপুর", "পাইকপাড়া", "শ্রীরামপুর"],
+            "চিৎলা ১৪": ["চিৎলা", "হাপানিয়া", "কুলপালা"],
+            "আইলহাস ১৫": ["আইলহাস", "ঘোলদাড়ি", "বলেম্বরপুর"],
+            "পৌরসভা ১৬": ["পৌরসভা ১", "পৌরসভা ২", "পৌরসভা ৩"]
+        };
+        
+        const fertilizers = ["ইউরিয়া", "টিএসপি", "এমওপি", "ডিএপি"];
+
+        function initFertilizerRows() {
+            const tbody = document.getElementById('fertilizerTableBody');
+            tbody.innerHTML = '';
+            fertilizers.forEach((fert, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="border p-2 font-semibold bg-slate-50">${fert}</td>
+                        <td class="border p-2"><input type="number" min="0" value="0" id="prev_mojud_${index}" oninput="calculateStock(${index})" class="w-full border rounded p-1 text-center"></td>
+                        <td class="border p-2"><input type="number" min="0" value="0" id="uttolon_${index}" oninput="calculateStock(${index})" class="w-full border rounded p-1 text-center"></td>
+                        <td class="border p-2"><input type="number" value="0" id="total_available_${index}" readonly class="w-full bg-slate-100 border rounded p-1 text-center font-semibold"></td>
+                        <td class="border p-2"><input type="number" min="0" value="0" id="bikroy_${index}" oninput="calculateStock(${index})" class="w-full border rounded p-1 text-center"></td>
+                        <td class="border p-2"><input type="number" value="0" id="closing_mojud_${index}" readonly class="w-full bg-emerald-50 border rounded p-1 text-center font-bold text-emerald-700"></td>
+                    </tr>
+                `;
+            });
+            document.getElementById('entryDate').valueAsDate = new Date();
+        }
+
+        function updateDealers() {
+            const union = document.getElementById('unionName').value;
+            const dealerSelect = document.getElementById('dealerName');
+            dealerSelect.innerHTML = '<option value="">-- ডিলার নির্বাচন করুন --</option>';
+            if (dealersByUnion[union]) {
+                dealersByUnion[union].forEach(dealer => {
+                    dealerSelect.innerHTML += `<option value="${dealer}">${dealer}</option>`;
+                });
+            }
+        }
+
+        function calculateStock(index) {
+            let prevMojud = parseFloat(document.getElementById(`prev_mojud_${index}`).value) || 0;
+            let uttolon = parseFloat(document.getElementById(`uttolon_${index}`).value) || 0;
+            let bikroy = parseFloat(document.getElementById(`bikroy_${index}`).value) || 0;
+            
+            let totalAvailable = prevMojud + uttolon;
+            document.getElementById(`total_available_${index}`).value = totalAvailable;
+
+            let closingMojud = totalAvailable - bikroy;
+            document.getElementById(`closing_mojud_${index}`).value = closingMojud >= 0 ? closingMojud : 0;
+        }
+
+        document.getElementById('fertilizerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const date = document.getElementById('entryDate').value;
+            const union = document.getElementById('unionName').value;
+            const dealer = document.getElementById('dealerName').value;
+
+            if (!union || !dealer) {
+                alert('দয়া করে ইউনিয়ন এবং ডিলার নির্বাচন করুন!');
+                return;
+            }
+
+            let record = { date, union, dealer, fertilizersData: [] };
+            fertilizers.forEach((fert, index) => {
+                let prevMojud = parseFloat(document.getElementById(`prev_mojud_${index}`).value) || 0;
+                let uttolon = parseFloat(document.getElementById(`uttolon_${index}`).value) || 0;
+                let total = parseFloat(document.getElementById(`total_available_${index}`).value) || 0;
+                let bikroy = parseFloat(document.getElementById(`bikroy_${index}`).value) || 0;
+                let closing = parseFloat(document.getElementById(`closing_mojud_${index}`).value) || 0;
+
+                record.fertilizersData.push({ fert, prevMojud, uttolon, total, bikroy, closing });
+            });
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerText = 'সংরক্ষণ হচ্ছে...';
+            submitBtn.disabled = true;
+
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "addRecord", record: record })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('তথ্য গুগল শিটে সফলভাবে সংরক্ষিত হয়েছে!');
+                submitBtn.innerText = 'সাবমিট করুন';
+                submitBtn.disabled = false;
+                this.reset();
+                initFertilizerRows();
+                document.getElementById('dealerName').innerHTML = '<option value="">-- আগে ইউনিয়ন নির্বাচন করুন --</option>';
+                if (localStorage.getItem('isAdminLoggedIn') === 'true') {
+                    loadReport();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('ডেটা সংরক্ষণে সমস্যা হয়েছে!');
+                submitBtn.innerText = 'সাবমিট করুন';
+                submitBtn.disabled = false;
+            });
+        });
+
+        function loadReport() {
+            const reportBody = document.getElementById('reportTableBody');
+            const reportFooter = document.getElementById('reportTableFooter');
+            reportBody.innerHTML = `<tr><td colspan="19" class="p-4 text-slate-500">গুগল শিট থেকে ডেটা আনা হচ্ছে...</td></tr>`;
+
+            fetch(SCRIPT_URL)
+            .then(res => res.json())
+            .then(records => {
+                if (records.length === 0) {
+                    reportBody.innerHTML = `<tr><td colspan="19" class="p-4 text-slate-500">কোনো তথ্য এন্ট্রি করা হয়নি।</td></tr>`;
+                    reportFooter.innerHTML = '';
+                    return;
+                }
+
+                reportBody.innerHTML = '';
+                let totals = { u_prev:0, u_utt:0, u_bik:0, u_clo:0, t_prev:0, t_utt:0, t_bik:0, t_clo:0, m_prev:0, m_utt:0, m_bik:0, m_clo:0, d_prev:0, d_utt:0, d_bik:0, d_clo:0 };
+
+                records.forEach(rec => {
+                    let fData = rec.fertilizersData || [];
+                    let u = fData[0] || {};
+                    let t = fData[1] || {};
+                    let m = fData[2] || {};
+                    let d = fData[3] || {};
+
+                    totals.u_prev += parseFloat(u.prevMojud) || 0; totals.u_utt += parseFloat(u.uttolon) || 0; totals.u_bik += parseFloat(u.bikroy) || 0; totals.u_clo += parseFloat(u.closing) || 0;
+                    totals.t_prev += parseFloat(t.prevMojud) || 0; totals.t_utt += parseFloat(t.uttolon) || 0; totals.t_bik += parseFloat(t.bikroy) || 0; totals.t_clo += parseFloat(t.closing) || 0;
+                    totals.m_prev += parseFloat(m.prevMojud) || 0; totals.m_utt += parseFloat(m.uttolon) || 0; totals.m_bik += parseFloat(m.bikroy) || 0; totals.m_clo += parseFloat(m.closing) || 0;
+                    totals.d_prev += parseFloat(d.prevMojud) || 0; totals.d_utt += parseFloat(d.uttolon) || 0; totals.d_bik += parseFloat(d.bikroy) || 0; totals.d_clo += parseFloat(d.closing) || 0;
+
+                    reportBody.innerHTML += `
+                        <tr>
+                           <td class="border p-2">${rec.date}</td>
+                           <td class="border p-2">${rec.union}</td>
+                           <td class="border p-2 font-medium">${rec.dealer}</td>
+                           <td class="border p-1">${u.prevMojud}</td><td class="border p-1">${u.uttolon}</td><td class="border p-1">${u.bikroy}</td><td class="border p-1 font-bold text-emerald-700">${u.closing}</td>
+                           <td class="border p-1">${t.prevMojud}</td><td class="border p-1">${t.uttolon}</td><td class="border p-1">${t.bikroy}</td><td class="border p-1 font-bold text-emerald-700">${t.closing}</td>
+                           <td class="border p-1">${m.prevMojud}</td><td class="border p-1">${m.uttolon}</td><td class="border p-1">${m.bikroy}</td><td class="border p-1 font-bold text-emerald-700">${m.closing}</td>
+                           <td class="border p-1">${d.prevMojud}</td><td class="border p-1">${d.uttolon}</td><td class="border p-1">${d.bikroy}</td><td class="border p-1 font-bold text-emerald-700">${d.closing}</td>
+                        </tr>
+                    `;
+                });
+
+                reportFooter.innerHTML = `
+                    <tr class="bg-emerald-100 font-bold text-emerald-900 text-xs">
+                        <td class="border p-2" colspan="3">সর্বমোট</td>
+                        <td class="border p-1">${totals.u_prev}</td><td class="border p-1">${totals.u_utt}</td><td class="border p-1">${totals.u_bik}</td><td class="border p-1 text-emerald-800">${totals.u_clo}</td>
+                        <td class="border p-1">${totals.t_prev}</td><td class="border p-1">${totals.t_utt}</td><td class="border p-1">${totals.t_bik}</td><td class="border p-1 text-emerald-800">${totals.t_clo}</td>
+                        <td class="border p-1">${totals.m_prev}</td><td class="border p-1">${totals.m_utt}</td><td class="border p-1">${totals.m_bik}</td><td class="border p-1 text-emerald-800">${totals.m_clo}</td>
+                        <td class="border p-1">${totals.d_prev}</td><td class="border p-1">${totals.d_utt}</td><td class="border p-1">${totals.d_bik}</td><td class="border p-1 text-emerald-800">${totals.d_clo}</td>
+                    </tr>
+                `;
+            })
+            .catch(err => {
+                console.error(err);
+                reportBody.innerHTML = `<tr><td colspan="19" class="p-4 text-red-500">ডাটা লোড করতে সমস্যা হয়েছে। ইউআরএল (SCRIPT_URL) ঠিক আছে কিনা চেক করুন।</td></tr>`;
+            });
+        }
+
+        function openLoginModal() { document.getElementById('loginModal').classList.remove('hidden'); }
+        function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
+
+        function handleLogin() {
+            const user = document.getElementById('adminUser').value;
+            const pass = document.getElementById('adminPass').value;
+            if (user === 'arif' && pass === '008899') {
+                localStorage.setItem('isAdminLoggedIn', 'true');
+                closeLoginModal();
+                checkAuthStatus();
+                alert('অ্যাডমিন হিসেবে সফলভাবে লগইন হয়েছে!');
+            } else {
+                alert('ভুল ইউজারনেম অথবা পাসওয়ার্ড!');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('isAdminLoggedIn');
+            checkAuthStatus();
+            alert('লগআউট করা হয়েছে।');
+        }
+
+        function checkAuthStatus() {
+            const authSection = document.getElementById('authSection');
+            const reportSection = document.getElementById('reportSection');
+            const isLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+
+            if (isLoggedIn) {
+                reportSection.classList.remove('hidden');
+                authSection.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold bg-emerald-800 px-3 py-1 rounded-lg text-white">অ্যাডমিন প্যানেল</span>
+                        <button onclick="handleLogout()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition">লগআউট</button>
+                    </div>
+                `;
+                loadReport();
+            } else {
+                reportSection.classList.add('hidden');
+                authSection.innerHTML = `
+                    <button onclick="openLoginModal()" class="bg-emerald-800 hover:bg-emerald-900 text-white px-4 py-2 rounded-lg text-sm font-semibold border border-emerald-600 transition">
+                        অ্যাডমিন লগইন
+                    </button>
+                `;
+            }
+        }
+
+        window.onload = function() {
+            initFertilizerRows();
+            checkAuthStatus();
+        };
+    </script>
+</body>
+</html>
